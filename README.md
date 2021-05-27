@@ -1,6 +1,6 @@
 # vaccinebot
 
-## This is Telegram bot @debugchaos_vaccine_bot
+## Telegram bot with username: @debugchaos_vaccine_bot
 ### Please note: This bot only supports availability for India only.
 
 ### Description:
