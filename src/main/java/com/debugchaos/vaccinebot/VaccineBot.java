@@ -88,13 +88,11 @@ public class VaccineBot extends TelegramLongPollingBot {
 
 		SendMessage sendMessage = new SendMessage();
 		sendMessage.setParseMode(ParseMode.MARKDOWN);
-		// sendMessage.setDisableWebPagePreview(true);
 		sendMessage.setText(message.toString());
 		sendMessage.setChatId(chatId + "");
 		try {
 			execute(sendMessage);
 		} catch (TelegramApiException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 

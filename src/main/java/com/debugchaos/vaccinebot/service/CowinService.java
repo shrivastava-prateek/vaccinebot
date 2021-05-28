@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -30,20 +31,21 @@ public class CowinService {
 	final static String datePattern = "dd-MM-yyyy";
 	final static SimpleDateFormat simpleDateFormat = new SimpleDateFormat(datePattern);
 	
+	@Value("${cowin.url}")
+	String cowinURI;
 	
 	public CowinCalendarResponse cowinFindCalendarByPin(PollingRequest pollingRequest) {
-		//String cowinURI = "https://7fd3165d-22f3-492d-a468-5897ffbf78bc.mock.pstmn.io/api/v2/appointment/sessions/public/";
-		String cowinURI = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/";
+		
 		Date date = new Date();
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("user-agent",
 				"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36");
 
-		cowinURI = cowinURI + "calendarByPin?pincode=" + pollingRequest.getPinCode() + "&date=" + simpleDateFormat.format(date);
+		String url = cowinURI + "calendarByPin?pincode=" + pollingRequest.getPinCode() + "&date=" + simpleDateFormat.format(date);
 
-		logger.debug(cowinURI);
+		logger.debug(url);
 		
-		HttpEntity<CowinCalendarResponse> res = restTemplate.exchange(cowinURI, HttpMethod.GET, new HttpEntity<>(null, headers),
+		HttpEntity<CowinCalendarResponse> res = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(null, headers),
 				CowinCalendarResponse.class);
 
 		logger.debug(res+"");
@@ -92,7 +94,6 @@ public class CowinService {
 		if (cowinResponse != null && !cowinResponse.getCenters().isEmpty()) {
 			cowinResponse.getCenters().forEach(center ->
 						{
-							//String final message = "";
 							String message = "*Vaccine is available!, Please find below the details:*\n"
 												+ "*Name: "+center.getName()+"*\n"
 												+ "Address: "+center.getAddress()+"\n"

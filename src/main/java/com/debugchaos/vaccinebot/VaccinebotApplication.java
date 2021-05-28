@@ -11,12 +11,15 @@ import javax.ws.rs.core.Application;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jms.DefaultJmsListenerContainerFactoryConfigurer;
+import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jms.annotation.EnableJms;
@@ -93,8 +96,9 @@ public class VaccinebotApplication {
 		return builder.build();
 	}
 
-	@Bean("oracledb")
-	public DataSource getDataSource() {
+	@Profile("prod")
+	@Bean("dataSource")
+	public DataSource getOracleDataSource() {
 		Properties info = new Properties();
 		info.put(OracleConnection.CONNECTION_PROPERTY_USER_NAME, env.getProperty("db.user"));
 		info.put(OracleConnection.CONNECTION_PROPERTY_PASSWORD, env.getProperty("db.password"));
@@ -112,19 +116,20 @@ public class VaccinebotApplication {
 
 	}
 	
-//	@Bean("oracledb")
-//	public DataSource getDataSource() {
-//		DataSourceBuilder dataSourceBuilder = DataSourceBuilder.create();
-//		dataSourceBuilder.driverClassName("org.postgresql.Driver");
-//		dataSourceBuilder.url("jdbc:postgresql://localhost:5432/postgres");
-//		dataSourceBuilder.username("postgres");
-//		dataSourceBuilder.password("postgres");
-//		return dataSourceBuilder.build();
-//
-//	}
+	@Profile("dev")
+	@Bean("dataSource")
+	public DataSource getDataSource() {
+		DataSourceBuilder dataSourceBuilder = DataSourceBuilder.create();
+		dataSourceBuilder.driverClassName("org.postgresql.Driver");
+		dataSourceBuilder.url("jdbc:postgresql://localhost:5432/postgres");
+		dataSourceBuilder.username("postgres");
+		dataSourceBuilder.password("postgres");
+		return dataSourceBuilder.build();
+
+	}
 
 	@Bean(name = "entityManagerFactory")
-	public LocalContainerEntityManagerFactoryBean entityManagerFactory() throws NamingException {
+	public LocalContainerEntityManagerFactoryBean entityManagerFactory(@Qualifier("dataSource") DataSource dataSource) throws NamingException {
 		LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
 		em.setDataSource(getDataSource());
 		em.setPackagesToScan(env.getProperty("packages.toscan"));
@@ -135,9 +140,9 @@ public class VaccinebotApplication {
 	}
 
 	@Bean("transaction")
-	public PlatformTransactionManager transactionManager() throws NamingException {
+	public PlatformTransactionManager transactionManager(LocalContainerEntityManagerFactoryBean entityManagerFactory) throws NamingException {
 		JpaTransactionManager transactionManager = new JpaTransactionManager();
-		transactionManager.setEntityManagerFactory(entityManagerFactory().getObject());
+		transactionManager.setEntityManagerFactory(entityManagerFactory.getObject());
 		return transactionManager;
 	}
 
