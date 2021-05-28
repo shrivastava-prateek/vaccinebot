@@ -69,6 +69,7 @@ public class MessageReceiverService {
 					if (messages != null && !messages.isEmpty()) {
 						messages.forEach(message -> vaccineBot.sendMessage(pollingRequest.getChatId(), message));
 					}
+					messages = null;
 
 				});
 
