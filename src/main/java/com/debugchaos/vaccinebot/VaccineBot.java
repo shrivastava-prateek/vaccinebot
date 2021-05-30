@@ -21,7 +21,7 @@ public class VaccineBot extends TelegramLongPollingBot {
 	private Environment env;
 
 	@Autowired
-	private CustomCommandService commandServive;
+	private CustomCommandService commandService;
 
 	private static final String RegisterCommand = "register";
 	private static final String UnregisterCommand = "/unregister";
@@ -49,14 +49,14 @@ public class VaccineBot extends TelegramLongPollingBot {
 		if (receivedMessage.startsWith(RegisterCommand)) {
 			String[] params = receivedMessage.split(" ");
 			PollingRequest pollingRequest = new PollingRequest(userName, params[1], params[2], chatId);
-			commandServive.registerPollingRequest(pollingRequest);
+			commandService.registerPollingRequest(pollingRequest);
 			sendMessage(chatId, "Registered Successfully!");
 		} else if (receivedMessage.equalsIgnoreCase(UnregisterCommand)) {
 			PollingRequest pollingRequest = new PollingRequest(userName, null, null, chatId);
-			commandServive.unregisterPollingRequest(pollingRequest);
+			commandService.unregisterPollingRequest(pollingRequest);
 			sendMessage(chatId, "Unregistered Successfully!");
 		} else if (receivedMessage.equalsIgnoreCase(HelpCommand)) {
-			String helpMessage = "To get notified for the available vaccinnation "
+			String helpMessage = "To get notified for the available vaccination "
 					+ "slots in your district, send the message as:\n"
 					+ "*register [pincode] [age]* \n"
 					+ "e.g., *register 475661 28* \n"
@@ -88,7 +88,7 @@ public class VaccineBot extends TelegramLongPollingBot {
 
 		SendMessage sendMessage = new SendMessage();
 		sendMessage.setParseMode(ParseMode.MARKDOWN);
-		sendMessage.setText(message.toString());
+		sendMessage.setText(message);
 		sendMessage.setChatId(chatId + "");
 		try {
 			execute(sendMessage);
