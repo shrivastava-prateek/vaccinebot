@@ -1,12 +1,22 @@
 package com.debugchaos.vaccinebot;
 
-import com.debugchaos.vaccinebot.service.CustomCommandService;
-import com.debugchaos.vaccinebot.vo.PollingRequest;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.ALPHA_NUMERIC_REGEX;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.EMPTY_STRING;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.HELP_COMMAND;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.HELP_MESSAGE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.INVALID_COMMAND_MESSAGE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.MIN_18_AGE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.MIN_45_AGE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.REGISTER_COMMAND;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.REGISTRATION_DETAILS_COMMAND;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.SINGLE_SPACE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.START_COMMAND;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.UNREGISTER_COMMAND;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
@@ -14,74 +24,111 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import com.debugchaos.vaccinebot.exception.InvalidRegisterRequestException;
+import com.debugchaos.vaccinebot.service.CustomCommandService;
+import com.debugchaos.vaccinebot.vo.PollingRequest;
+
 @Component
 public class VaccineBot extends TelegramLongPollingBot {
 
 	@Autowired
-	private Environment env;
-
-	@Autowired
 	private CustomCommandService commandService;
 
-	private static final String RegisterCommand = "register";
-	private static final String UnregisterCommand = "/unregister";
-	private static final String HelpCommand = "/help";
-	private static final String StartCommand = "/start";
+	private static final Logger logger = LoggerFactory.getLogger(VaccineBot.class);
 
-	private static final Logger logger = LoggerFactory.getLogger(TelegramLongPollingBot.class);
+	@Value("${bot.username}")
+	private String botUserName;
+	@Value("${bot.token}")
+	private String botToken;
 
 	@Override
 	public void onUpdateReceived(Update update) {
 
-		String receivedMessage = update.getMessage().getText();
-		String userName = update.getMessage().getFrom().getUserName();
-		String name = update.getMessage().getFrom().getFirstName();
-		userName = update.getMessage().getFrom().getId().toString();
-
-		logger.info(update.getMessage().getFrom() + " " + update.getMessage().getFrom().getFirstName() + " "
+		logger.debug(update.getMessage().getFrom() + " " + update.getMessage().getFrom().getFirstName() + " "
 				+ update.getMessage().getFrom().getLastName() + " " + update.getMessage().getFrom().getUserName() + " "
 				+ update.getMessage().getFrom().getId() + " " + update.getMessage().getFrom().toString());
 
-		logger.info(userName + " " + receivedMessage + " " + name);
-
+		String receivedMessage = update.getMessage().getText();
+		String userFirstName = update.getMessage().getFrom().getFirstName() != null
+				? update.getMessage().getFrom().getFirstName().trim()
+				: "";
+		String userLastName = update.getMessage().getFrom().getLastName() != null
+				? update.getMessage().getFrom().getLastName().trim()
+				: "";
+		String userFullName = userFirstName + userLastName;
+		Long userId = update.getMessage().getFrom().getId();
 		Long chatId = update.getMessage().getChatId();
 
-		if (receivedMessage.startsWith(RegisterCommand)) {
-			String[] params = receivedMessage.split(" ");
-			PollingRequest pollingRequest = new PollingRequest(userName, params[1], params[2], chatId);
-			commandService.registerPollingRequest(pollingRequest);
-			sendMessage(chatId, "Registered Successfully!");
-		} else if (receivedMessage.equalsIgnoreCase(UnregisterCommand)) {
-			PollingRequest pollingRequest = new PollingRequest(userName, null, null, chatId);
-			commandService.unregisterPollingRequest(pollingRequest);
-			sendMessage(chatId, "Unregistered Successfully!");
-		} else if (receivedMessage.equalsIgnoreCase(HelpCommand)) {
-			String helpMessage = "To get notified for the available vaccination "
-					+ "slots in your district, send the message as:\n"
-					+ "*register [pincode] [age]* \n"
-					+ "e.g., *register 475661 28* \n"
-					+ "To unregister use */unregister* command. \n"
-					+ "*Please note:* \n"
-					+ "You will get notified only when there is a slot available, also notification will stop only "
-					+ "when you unregister.";
-			sendMessage(chatId, helpMessage);
-		} else if (receivedMessage.equalsIgnoreCase(StartCommand)) {
-			String helpMessage = "Hi " + name + ", To get started use /help command.";
-			sendMessage(chatId, helpMessage);
+		logger.debug(receivedMessage + " " + userFirstName + " " + userLastName + " " + userFullName + " " + userId
+				+ " " + chatId);
+
+		if (receivedMessage == null || receivedMessage.isBlank()) {
+
+			sendMessage(chatId, INVALID_COMMAND_MESSAGE);
+			return;
+
 		} else {
-			sendMessage(chatId, "Not a recognized command! Please check help using /help command");
+			receivedMessage = receivedMessage.trim().toUpperCase().replaceAll(ALPHA_NUMERIC_REGEX, EMPTY_STRING);
+			logger.debug("Stripped message: " + receivedMessage);
+		}
+
+		if (receivedMessage.startsWith(REGISTER_COMMAND)) {
+
+			String[] params = receivedMessage.split(SINGLE_SPACE);
+
+			try {
+
+				commandService.validateRegisterRequest(params);
+
+			} catch (InvalidRegisterRequestException exception) {
+
+				sendMessage(chatId, exception.getMessage());
+				return;
+			}
+
+			logger.debug("Validated pin and age");
+
+			int pincode = Integer.parseInt(params[1].trim());
+			int age = Integer.parseInt(params[2].trim()) >= MIN_45_AGE ? MIN_45_AGE : MIN_18_AGE;
+
+			PollingRequest pollingRequest = new PollingRequest(userId, userFullName, pincode, age, chatId, null);
+			commandService.registerPollingRequest(pollingRequest);
+
+		} else if (receivedMessage.equalsIgnoreCase(UNREGISTER_COMMAND)) {
+
+			PollingRequest pollingRequest = new PollingRequest(userId, null, 0, 0, chatId, null);
+			commandService.unregisterPollingRequest(pollingRequest);
+
+		} else if (receivedMessage.equalsIgnoreCase(HELP_COMMAND)) {
+
+			sendMessage(chatId, HELP_MESSAGE);
+
+		} else if (receivedMessage.equalsIgnoreCase(START_COMMAND)) {
+
+			String helpMessage = "Hi " + userFullName + ", To get started use /help command.";
+			sendMessage(chatId, helpMessage);
+
+		} else if (receivedMessage.equalsIgnoreCase(REGISTRATION_DETAILS_COMMAND)) {
+
+			PollingRequest pollingRequest = new PollingRequest(userId, null, 0, 0, chatId, null);
+			commandService.getRegistrationDetails(pollingRequest);
+
+		} else {
+
+			sendMessage(chatId, INVALID_COMMAND_MESSAGE);
+
 		}
 
 	}
 
 	@Override
 	public String getBotUsername() {
-		return env.getProperty("bot.username");
+		return botUserName;
 	}
 
 	@Override
 	public String getBotToken() {
-		return env.getProperty("bot.token");
+		return botToken;
 	}
 
 	public void sendMessage(Long chatId, String message) {

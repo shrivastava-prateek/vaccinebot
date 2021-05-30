@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jms.DefaultJmsListenerContainerFactoryConfigurer;
@@ -39,13 +40,14 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 import com.debugchaos.vaccinebot.service.MessageReceiverService;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.*;
 
 import oracle.jdbc.OracleConnection;
 import oracle.jdbc.pool.OracleDataSource;
 
 @SpringBootApplication
 @EnableJms
-@EnableJpaRepositories(basePackages = "com.debugchaos.vaccinebot.vo")
+@EnableJpaRepositories(basePackages = JPA_REPO_PACKAGE)
 @EnableTransactionManagement
 public class VaccinebotApplication {
 
@@ -54,6 +56,17 @@ public class VaccinebotApplication {
 
 	private static final Logger logger = LoggerFactory.getLogger(Application.class);
 
+	@Value("${db.url}")
+	private String dbURL;
+	@Value("${db.user}")
+	private String dbUser;
+	@Value("${db.password}")
+	private String dbPassword;
+	@Value("${db.rowprefetch}")
+	private String dbRowPrefetch;
+	@Value("${db.driverclass}")
+	private String dbDriverClassName;
+
 	public static void main(String[] args) {
 
 		for (String arg : args) {
@@ -61,21 +74,21 @@ public class VaccinebotApplication {
 		}
 
 		ConfigurableApplicationContext applicationContext = SpringApplication.run(VaccinebotApplication.class, args);
-		VaccineBot vaccineBot = (VaccineBot) applicationContext.getBean("vaccineBot");
+		VaccineBot vaccineBot = (VaccineBot) applicationContext.getBean(BEAN_VACCINEBOT);
 		MessageReceiverService messageReceiver = (MessageReceiverService) applicationContext
-				.getBean("messageReceiverService");
+				.getBean(BEAN_MESSAGERECEIVER_SERVICE);
 
 		try {
-			messageReceiver.initializeRequestSet();
+			messageReceiver.initializeRequestsMaps();
 			TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
 			telegramBotsApi.registerBot(vaccineBot);
-			messageReceiver.pollForLife();
+			messageReceiver.pollCowinForLife();
 		} catch (TelegramApiException e) {
 			e.printStackTrace();
 		}
 	}
 
-	@Bean("queueFactory")
+	@Bean(QUEUE_FACTORY)
 	public JmsListenerContainerFactory<?> myFactory(ConnectionFactory connectionFactory,
 			DefaultJmsListenerContainerFactoryConfigurer configurer) {
 		DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
@@ -96,17 +109,17 @@ public class VaccinebotApplication {
 		return builder.build();
 	}
 
-	@Profile("prod")
-	@Bean("dataSource")
+	@Profile(PROFILE_ORACLEDB)
+	@Bean(BEAN_DATASOURCE)
 	public DataSource getOracleDataSource() {
 		Properties info = new Properties();
-		info.put(OracleConnection.CONNECTION_PROPERTY_USER_NAME, env.getProperty("db.user"));
-		info.put(OracleConnection.CONNECTION_PROPERTY_PASSWORD, env.getProperty("db.password"));
-		info.put(OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH, env.getProperty("db.rowprefetch"));
+		info.put(OracleConnection.CONNECTION_PROPERTY_USER_NAME, dbUser);
+		info.put(OracleConnection.CONNECTION_PROPERTY_PASSWORD, dbPassword);
+		info.put(OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH, dbRowPrefetch);
 		OracleDataSource ods = null;
 		try {
 			ods = new OracleDataSource();
-			ods.setURL(env.getProperty("db.url"));
+			ods.setURL(dbURL);
 			ods.setConnectionProperties(info);
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -115,32 +128,34 @@ public class VaccinebotApplication {
 		return ods;
 
 	}
-	
-	@Profile("dev")
-	@Bean("dataSource")
+
+	@Profile(PROFILE_POSTGRESDB)
+	@Bean(BEAN_DATASOURCE)
 	public DataSource getDataSource() {
-		DataSourceBuilder dataSourceBuilder = DataSourceBuilder.create();
-		dataSourceBuilder.driverClassName("org.postgresql.Driver");
-		dataSourceBuilder.url("jdbc:postgresql://localhost:5432/postgres");
-		dataSourceBuilder.username("postgres");
-		dataSourceBuilder.password("postgres");
+		DataSourceBuilder<?> dataSourceBuilder = DataSourceBuilder.create();
+		dataSourceBuilder.driverClassName(dbDriverClassName);
+		dataSourceBuilder.url(dbURL);
+		dataSourceBuilder.username(dbUser);
+		dataSourceBuilder.password(dbPassword);
 		return dataSourceBuilder.build();
 
 	}
 
-	@Bean(name = "entityManagerFactory")
-	public LocalContainerEntityManagerFactoryBean entityManagerFactory(@Qualifier("dataSource") DataSource dataSource) throws NamingException {
+	@Bean(BEAN_ENTITYMANAGER_FACTORY)
+	public LocalContainerEntityManagerFactoryBean entityManagerFactory(
+			@Qualifier(BEAN_DATASOURCE) DataSource dataSource) throws NamingException {
 		LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
 		em.setDataSource(getDataSource());
-		em.setPackagesToScan(env.getProperty("packages.toscan"));
-		em.setPersistenceUnitName("entityManagerFactory");
+		em.setPackagesToScan(ENTITY_PACKAGE_SCAN);
+		em.setPersistenceUnitName(PERSISTENCE_UNIT_NAME);
 		em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
 		em.setJpaProperties(additionalProperties());
 		return em;
 	}
 
-	@Bean("transaction")
-	public PlatformTransactionManager transactionManager(LocalContainerEntityManagerFactoryBean entityManagerFactory) throws NamingException {
+	@Bean(BEAN_TRANSACTION)
+	public PlatformTransactionManager transactionManager(LocalContainerEntityManagerFactoryBean entityManagerFactory)
+			throws NamingException {
 		JpaTransactionManager transactionManager = new JpaTransactionManager();
 		transactionManager.setEntityManagerFactory(entityManagerFactory.getObject());
 		return transactionManager;
@@ -148,11 +163,11 @@ public class VaccinebotApplication {
 
 	Properties additionalProperties() {
 		Properties properties = new Properties();
-		properties.setProperty("hibernate.hbm2ddl.auto", env.getProperty("hibernate.hbm2ddl.auto"));
-		properties.setProperty("hibernate.generate_statistics", env.getProperty("hibernate.generate_statistics"));
-		properties.setProperty("hibernate.use_sql_comments", env.getProperty("hibernate.use_sql_comments"));
-		properties.setProperty("hibernate.format_sql", env.getProperty("hibernate.format_sql"));
-		properties.setProperty("hibernate.show_sql", env.getProperty("hibernate.show_sql"));
+		properties.setProperty(HIBERNATE_HBM2DDL_AUTO, env.getProperty(HIBERNATE_HBM2DDL_AUTO));
+		properties.setProperty(HIBERNATE_GENERATE_STATISTICS, env.getProperty(HIBERNATE_GENERATE_STATISTICS));
+		properties.setProperty(HIBERNATE_USE_SQL_COMMENTS, env.getProperty(HIBERNATE_USE_SQL_COMMENTS));
+		properties.setProperty(HIBERNATE_FORMAT_SQL, env.getProperty(HIBERNATE_FORMAT_SQL));
+		properties.setProperty(HIBERNATE_SHOW_SQL, env.getProperty(HIBERNATE_SHOW_SQL));
 		return properties;
 	}
 

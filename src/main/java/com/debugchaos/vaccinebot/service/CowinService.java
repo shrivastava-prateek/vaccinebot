@@ -1,9 +1,9 @@
 package com.debugchaos.vaccinebot.service;
 
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -16,132 +16,124 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import com.debugchaos.vaccinebot.vo.Center;
+import com.debugchaos.vaccinebot.VaccineBot;
+import com.debugchaos.vaccinebot.util.DateTimeUtil;
 import com.debugchaos.vaccinebot.vo.CowinCalendarResponse;
 import com.debugchaos.vaccinebot.vo.PollingRequest;
+import com.debugchaos.vaccinebot.vo.SlotDetails;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.*;
 
 @Component
 public class CowinService {
 
 	@Autowired
 	RestTemplate restTemplate;
-	
-	private static final Logger logger = LoggerFactory.getLogger(CowinService.class);
 
-	final static String datePattern = "dd-MM-yyyy";
-	final static SimpleDateFormat simpleDateFormat = new SimpleDateFormat(datePattern);
-	
+	@Autowired
+	VaccineBot vaccineBot;
+
 	@Value("${cowin.url}")
 	String cowinURI;
-	
-	public CowinCalendarResponse cowinFindCalendarByPin(PollingRequest pollingRequest) {
-		
-		Date date = new Date();
+
+	private static final Logger logger = LoggerFactory.getLogger(CowinService.class);
+
+	public CowinCalendarResponse cowinFindCalendarByPin(Integer pinCode) {
+
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("user-agent",
 				"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36");
 
-		String url = cowinURI + "calendarByPin?pincode=" + pollingRequest.getPinCode() + "&date=" + simpleDateFormat.format(date);
+		String url = cowinURI + "calendarByPin?pincode=" + pinCode + "&date="
+				+ DateTimeUtil.getFormattedISTCurrentDate();
 
 		logger.debug(url);
-		
-		HttpEntity<CowinCalendarResponse> res = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(null, headers),
-				CowinCalendarResponse.class);
 
-		logger.debug(res+"");
-		logger.debug(res.getBody().toString());
-		
-		return res.getBody()!=null?res.getBody():null;
+		HttpEntity<CowinCalendarResponse> res = restTemplate.exchange(url, HttpMethod.GET,
+				new HttpEntity<>(null, headers), CowinCalendarResponse.class);
+
+		logger.debug(res + "");
+		// logger.debug(res.getBody().toString());
+
+		return res.getBody() != null ? res.getBody() : null;
 	}
-	
 
-	private CowinCalendarResponse getBelow45Slots(CowinCalendarResponse cowinResponse) {
+	private Set<SlotDetails> filterOnlyAvailableSlots(CowinCalendarResponse cowinResponse) {
 
-		CowinCalendarResponse cowinResponseFiltered = new CowinCalendarResponse();
-		
-		List<Center> centers =  cowinResponse.getCenters().stream().filter(center -> center.getSessions().stream().
-				filter(session -> session.getMin_age_limit() == 18 && session.getAvailable_capacity() > 0?true:false)
-				.collect(Collectors.toList()).isEmpty()?false:true).collect(Collectors.toList());
-		
-		cowinResponseFiltered.setCenters(centers);
-		
-		logger.debug("filtered responses: " + cowinResponseFiltered);
+		Set<SlotDetails> slotDetails = new HashSet<>();
 
-		return cowinResponseFiltered;
+		cowinResponse.getCenters().forEach(center -> {
+			List<SlotDetails> slots = center.getSessions().stream()
+					.filter(session -> session.getAvailable_capacity() > 0 ? true : false).map(session -> {
+						return new SlotDetails(center.getCenter_id(), center.getName(), center.getAddress(),
+								center.getState_name(), center.getDistrict_name(), center.getBlock_name(),
+								center.getPincode(), center.getLat(), center.getFrom(), center.getTo(),
+								center.getFee_type(), session.getSession_id(), session.getDate(),
+								session.getAvailable_capacity_dose1(), session.getAvailable_capacity_dose2(),
+								session.getAvailable_capacity(), session.getFee(), session.getMin_age_limit(),
+								session.getVaccine());
+					}).collect(Collectors.toList());
 
-	}
-	
-	
-	private CowinCalendarResponse get45andAboveSlots(CowinCalendarResponse cowinResponse) {
+			slotDetails.addAll(slots);
+		});
 
-		CowinCalendarResponse cowinResponseFiltered = new CowinCalendarResponse();
-		
-		List<Center> centers =  cowinResponse.getCenters().stream().filter(center -> center.getSessions().stream().
-				filter(session -> session.getMin_age_limit() == 45 && session.getAvailable_capacity() > 0?true:false)
-				.collect(Collectors.toList()).isEmpty()?false:true).collect(Collectors.toList());
-		
-		cowinResponseFiltered.setCenters(centers);
+		logger.debug("filterOnlyAvailableSlots responses Size: " + slotDetails.size());
+		logger.debug("filterOnlyAvailableSlots responses: " + slotDetails);
 
-		return cowinResponseFiltered;
+		return slotDetails;
 
 	}
-	
-	
-	
-	public List<String> formatMessageCowinResponse(CowinCalendarResponse cowinResponse) {
-		List<String> messages = new ArrayList<>();
-		
-		if (cowinResponse != null && !cowinResponse.getCenters().isEmpty()) {
-			cowinResponse.getCenters().forEach(center ->
-						{
-							String message = "*Vaccine is available!, Please find below the details:*\n"
-												+ "*Name: "+center.getName()+"*\n"
-												+ "Address: "+center.getAddress()+"\n"
-												+ "District Name: "+center.getDistrict_name()+"\n"
-												+ "State Name: "+center.getState_name()+"\n";
-							List<String> sessionMessages = center.getSessions().stream().filter(session -> session.getAvailable_capacity()>0?true:false).map(session -> {
-								String centerMessage = "*Available Capacity Dose 1: "+session.getAvailable_capacity_dose1()+"*\n"
-										+ "*Available Capacity Dose 2: "+session.getAvailable_capacity_dose2()+"*\n"
-										+ "*Total available capacity: "+session.getAvailable_capacity()+"*\n"
-										+ "Vaccine: "+session.getVaccine()+"\n"
-										+ "*Min Age Limit: "+session.getMin_age_limit()+"*\n"
-										+ "Date: "+session.getDate()+"";
-								return centerMessage;
-							}).collect(Collectors.toList());
-							
-							sessionMessages.forEach(messageStr -> messages.add(message+messageStr));
-						
-						}
-						
-			);
-		}
-		
-		logger.debug("messages: " + messages);
-		
-		return messages;
-		
-	}
-	
-	public List<String> checkAvailability(PollingRequest pollingRequest){
+
+	public void checkAvailabilityAndSendMessage(Integer pincode, Set<PollingRequest> pollingRequests) {
 		logger.debug("going to poll service: ");
-		List<String> messages = null;
-		CowinCalendarResponse filteredResponse = null;
-		CowinCalendarResponse cowinResponse =  cowinFindCalendarByPin(pollingRequest);
-		
-		int age = pollingRequest.getAge() != null ? Integer.parseInt(pollingRequest.getAge()) : 18;
 
-		if (age < 45 && cowinResponse != null) {
-			filteredResponse = getBelow45Slots(cowinResponse);
-		}
-		else if(age >= 45 && cowinResponse != null) {
-			filteredResponse = get45andAboveSlots(cowinResponse);
-		}
-		if(filteredResponse != null) {
-			messages = formatMessageCowinResponse(filteredResponse);	
-		}
-		
-		return messages;
+		// Segregate requests by age (above or below 45)
+		Map<Boolean, List<PollingRequest>> ageWisePollingRequests = pollingRequests.stream()
+				.collect(Collectors.partitioningBy(pollingRequest -> pollingRequest.getAge() >= MIN_45_AGE));
+
+		logger.debug("ageWisePollingRequests Size: " + ageWisePollingRequests.size());
+		logger.debug("ageWisePollingRequests: " + ageWisePollingRequests);
+
+		// call cowin API
+		CowinCalendarResponse cowinResponse = cowinFindCalendarByPin(pincode);
+
+		if (cowinResponse == null || cowinResponse.getCenters().isEmpty())
+			return;
+
+		// get only available slots
+		Set<SlotDetails> availableSlots = filterOnlyAvailableSlots(cowinResponse);
+
+		availableSlots.stream().collect(Collectors.groupingBy(SlotDetails::getMin_age_limit))
+				.forEach((minAge, slots) -> {
+					if (minAge == MIN_18_AGE) {
+						logger.debug("min age 18 slots Size: " + slots.size());
+						// logger.debug("min age 18 slots: " + slots);
+						ageWisePollingRequests.get(Boolean.FALSE).forEach(pollingRequest -> {
+							// logger.debug("min age 18 polling request: " + pollingRequest);
+							slots.forEach(slot -> {
+								if (!pollingRequest.getSlotDetails().contains(slot)) {
+									vaccineBot.sendMessage(pollingRequest.getChatId(), slot.getFormattedMessage());
+									pollingRequest.getSlotDetails().add(slot);
+									logger.debug("min age 18 requet added slot for tracking: " + pollingRequest);
+								}
+							});
+
+						});
+					} else {
+						logger.debug("min age 45 slots Size: " + slots.size());
+						// logger.debug("min age 45 slots: " + slots);
+						ageWisePollingRequests.get(Boolean.TRUE).forEach(pollingRequest -> {
+							// logger.debug("min age 45 polling request: " + pollingRequest);
+							slots.forEach(slot -> {
+								if (!pollingRequest.getSlotDetails().contains(slot)) {
+									vaccineBot.sendMessage(pollingRequest.getChatId(), slot.getFormattedMessage());
+									pollingRequest.getSlotDetails().add(slot);
+									logger.debug("min age 45 requet added slot for tracking: " + pollingRequest);
+								}
+							});
+						});
+					}
+				});
+
 	}
-
 
 }

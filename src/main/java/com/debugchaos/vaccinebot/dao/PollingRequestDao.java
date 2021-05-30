@@ -24,9 +24,10 @@ public class PollingRequestDao {
 		manager.persist(pollingRequest);
 	}
 
-	public void deleteAllRequestByUserName(String userName) {
-		manager.createQuery("delete from PollingRequest pr where pr.userName=:userName")
-				.setParameter("userName", userName).executeUpdate();
+	public void deleteAllRequestByUserId(Long userId) {
+		manager.createQuery("delete from PollingRequest pr where pr.userId=:userId")
+				.setParameter("userId", userId).executeUpdate();
 	}
+	
 
 }

@@ -1,5 +1,6 @@
 package com.debugchaos.vaccinebot.service;
 
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,12 +18,13 @@ public class PollingRequestService {
 	PollingRequestDao pollingRequestDao;
 
 	public void saveRequest(PollingRequest pollingRequest) {
+		pollingRequest.setCreatedDate(Instant.now());
 
 		pollingRequestDao.saveRequest(pollingRequest);
 	}
 
-	public void deleteRequestByUserName(String userName) {
-		pollingRequestDao.deleteAllRequestByUserName(userName);
+	public void deleteRequestByUserId(Long userId) {
+		pollingRequestDao.deleteAllRequestByUserId(userId);
 	}
 
 	public List<PollingRequest> getAllPollingRequest() {
