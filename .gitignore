@@ -31,4 +31,4 @@ build/
 
 ### VS Code ###
 .vscode/
-vaccine-bot.log
+*vaccine-bot.log*
