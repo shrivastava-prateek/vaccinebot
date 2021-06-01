@@ -1,29 +1,38 @@
 package com.debugchaos.vaccinebot.service;
 
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.ALREADY_REGISTERED_MESSAGE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.DDOS_MESSAGE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.NOT_REGISTERED_MESSAGE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.QUEUE_FACTORY;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.REGISTERATIONDETAILS_QUEUE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.REGISTERED_MESSAGE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.REGISTRATION_QUEUE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.UNREGISTERATION_QUEUE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.UNREGISTERED_MESSAGE;
+
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
+
+import javax.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Component;
 
 import com.debugchaos.vaccinebot.VaccineBot;
+import com.debugchaos.vaccinebot.constant.APP_CONSTANT;
+import com.debugchaos.vaccinebot.util.DateTimeUtil;
 import com.debugchaos.vaccinebot.vo.PollingRequest;
-import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.*;
+import com.debugchaos.vaccinebot.vo.SlotDetails;
 
 @Component
 public class MessageReceiverService {
-
-	@Value("${pauseinms}")
-	private String sleepTime;
 
 	@Autowired
 	CowinService cowinService;
@@ -47,15 +56,14 @@ public class MessageReceiverService {
 		if (userRequests != null && userRequests.size() >= 10) {
 			vaccineBot.sendMessage(pollingRequest.getChatId(), DDOS_MESSAGE);
 			return;
-		} else if (userRequests == null ) {
+		} else if (userRequests == null) {
 			userRequests = ConcurrentHashMap.newKeySet();
 			userRequests.add(pollingRequest);
 			userRequestMap.put(pollingRequest.getUserId(), userRequests);
-			
-		} else if(userRequests != null && !userRequests.contains(pollingRequest)) {
+
+		} else if (userRequests != null && !userRequests.contains(pollingRequest)) {
 			userRequests.add(pollingRequest);
-		}
-		else {
+		} else {
 			vaccineBot.sendMessage(pollingRequest.getChatId(), ALREADY_REGISTERED_MESSAGE);
 			return;
 		}
@@ -74,7 +82,7 @@ public class MessageReceiverService {
 		}
 
 		logger.info("Current Pincode Requests Map: " + pincodeRequestMap);
-		
+
 		vaccineBot.sendMessage(pollingRequest.getChatId(), REGISTERED_MESSAGE);
 
 	}
@@ -97,50 +105,39 @@ public class MessageReceiverService {
 		});
 
 		logger.info("Current Pincode Requests Map after deletion: " + pincodeRequestMap);
-		
+
 		vaccineBot.sendMessage(pollingRequest.getChatId(), UNREGISTERED_MESSAGE);
 
 	}
-	
+
 	@JmsListener(destination = REGISTERATIONDETAILS_QUEUE, containerFactory = QUEUE_FACTORY)
 	public void receiveMessageFetchRegistrations(PollingRequest pollingRequest) {
 		logger.info("request received for fetching registration details: " + pollingRequest);
 		String formattedMessage = "";
 		Set<PollingRequest> pollingRequests = userRequestMap.get(pollingRequest.getUserId());
-		if(pollingRequests != null && !pollingRequests.isEmpty())
-			formattedMessage = pollingRequests.stream().map(p -> p.getFormattedMessage()).reduce((p1,p2) -> p1+p2).get();
+		if (pollingRequests != null && !pollingRequests.isEmpty())
+			formattedMessage = pollingRequests.stream().map(p -> p.getFormattedMessage()).reduce((p1, p2) -> p1 + p2)
+					.get();
 		else
 			formattedMessage = NOT_REGISTERED_MESSAGE;
-		
+
 		vaccineBot.sendMessage(pollingRequest.getChatId(), formattedMessage);
 
 	}
 
-	public void pollCowinForLife() {
+	public void pollCowinForEachPincode() {
 
-		ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(THREAD_POOL_EXECUTOR_SIZE);
+		pincodeRequestMap.forEach((pincode, pollingRequests) -> {
+			if (!pollingRequests.isEmpty()) {
 
-		while (Boolean.TRUE) {
-			try {
-				pincodeRequestMap.forEach((pincode, pollingRequests) -> {
-					if(!pollingRequests.isEmpty()) {
-						executor.submit(() -> {
+				cowinService.checkAvailabilityAndSendMessage(pincode, pollingRequests);
 
-							cowinService.checkAvailabilityAndSendMessage(pincode, pollingRequests);
-
-						});
-	
-					}
-				});
-
-				Thread.sleep(Long.parseLong(sleepTime));
-			} catch (InterruptedException e) {
-				e.printStackTrace();
 			}
 
-		}
+		});
 	}
 
+	@PostConstruct
 	public void initializeRequestsMaps() {
 
 		List<PollingRequest> savedPollingRequests = pollingRequestService.getAllPollingRequest();
@@ -162,6 +159,30 @@ public class MessageReceiverService {
 		logger.info("Current User Requests Map: " + userRequestMap);
 		logger.info("Current Pincode Requests Map: " + pincodeRequestMap);
 
+	}
+
+	public void removeOldSlotsFromPollingRequests() {
+		logger.info("Going to clean up old slots");
+		String currentDateTime = DateTimeUtil.getFormattedISTCurrentDate();
+		LocalDate currentDate = LocalDate.parse(currentDateTime, APP_CONSTANT.ddMMyyyyFormatter);
+
+		pincodeRequestMap.forEach((pincode, pollingRequests) -> {
+			if (!pollingRequests.isEmpty()) {
+				pollingRequests.forEach(pr -> {
+					List<SlotDetails> oldSlots = pr.getSlotDetails().stream().filter(slot -> {
+						LocalDate slotDate = LocalDate.parse(slot.getDate(), APP_CONSTANT.ddMMyyyyFormatter);
+						if (slotDate.isBefore(currentDate))
+							return true;
+						else
+							return false;
+					}).collect(Collectors.toList());
+					pr.getSlotDetails().removeAll(oldSlots);
+					logger.debug("slots to be deleted: " + oldSlots);
+					logger.debug("size after deletion: " + pr.getSlotDetails().size());
+					logger.debug("polling request after deletion: " + pr);
+				});
+			}
+		});
 	}
 
 }

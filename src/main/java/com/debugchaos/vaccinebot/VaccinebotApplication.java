@@ -32,6 +32,7 @@ import org.springframework.jms.support.converter.MessageType;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.client.RestTemplate;
@@ -49,6 +50,7 @@ import oracle.jdbc.pool.OracleDataSource;
 @EnableJms
 @EnableJpaRepositories(basePackages = JPA_REPO_PACKAGE)
 @EnableTransactionManagement
+@EnableScheduling
 public class VaccinebotApplication {
 
 	@Autowired
@@ -79,10 +81,9 @@ public class VaccinebotApplication {
 				.getBean(BEAN_MESSAGERECEIVER_SERVICE);
 
 		try {
-			messageReceiver.initializeRequestsMaps();
+			//messageReceiver.initializeRequestsMaps();
 			TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
 			telegramBotsApi.registerBot(vaccineBot);
-			messageReceiver.pollCowinForLife();
 		} catch (TelegramApiException e) {
 			e.printStackTrace();
 		}

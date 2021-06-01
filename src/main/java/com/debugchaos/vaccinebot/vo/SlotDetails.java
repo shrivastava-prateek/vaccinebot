@@ -235,12 +235,12 @@ public class SlotDetails {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + available_capacity;
-		result = prime * result + available_capacity_dose1;
-		result = prime * result + available_capacity_dose2;
 		result = prime * result + center_id;
+		result = prime * result + ((date == null) ? 0 : date.hashCode());
+		result = prime * result + ((district_name == null) ? 0 : district_name.hashCode());
 		result = prime * result + ((fee_type == null) ? 0 : fee_type.hashCode());
 		result = prime * result + min_age_limit;
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
 		result = prime * result + pincode;
 		result = prime * result + ((session_id == null) ? 0 : session_id.hashCode());
 		result = prime * result + ((state_name == null) ? 0 : state_name.hashCode());
@@ -257,13 +257,17 @@ public class SlotDetails {
 		if (getClass() != obj.getClass())
 			return false;
 		SlotDetails other = (SlotDetails) obj;
-		if (available_capacity != other.available_capacity)
-			return false;
-		if (available_capacity_dose1 != other.available_capacity_dose1)
-			return false;
-		if (available_capacity_dose2 != other.available_capacity_dose2)
-			return false;
 		if (center_id != other.center_id)
+			return false;
+		if (date == null) {
+			if (other.date != null)
+				return false;
+		} else if (!date.equals(other.date))
+			return false;
+		if (district_name == null) {
+			if (other.district_name != null)
+				return false;
+		} else if (!district_name.equals(other.district_name))
 			return false;
 		if (fee_type == null) {
 			if (other.fee_type != null)
@@ -271,6 +275,11 @@ public class SlotDetails {
 		} else if (!fee_type.equals(other.fee_type))
 			return false;
 		if (min_age_limit != other.min_age_limit)
+			return false;
+		if (name == null) {
+			if (other.name != null)
+				return false;
+		} else if (!name.equals(other.name))
 			return false;
 		if (pincode != other.pincode)
 			return false;
@@ -291,6 +300,8 @@ public class SlotDetails {
 			return false;
 		return true;
 	}
+
+
 
 	
 	

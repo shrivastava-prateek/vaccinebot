@@ -39,28 +39,32 @@ public class CustomCommandService {
 		jmsTemplate.convertAndSend(UNREGISTERATION_QUEUE, pollingRequest);
 
 	}
-	
+
 	public void getRegistrationDetails(PollingRequest pollingRequest) {
 		logger.debug("going to fetch registration requests: " + pollingRequest);
 		jmsTemplate.convertAndSend(REGISTERATIONDETAILS_QUEUE, pollingRequest);
 	}
-	
-	
+
 	public void validateRegisterRequest(String[] params) throws InvalidRegisterRequestException {
-		
-		if(params.length < 3) throw new InvalidRegisterRequestException(INSUFFICIENT_PARAMETERS_MESSAGE);
+
+		if (params.length < 3)
+			throw new InvalidRegisterRequestException(INSUFFICIENT_PARAMETERS_MESSAGE);
 		String pincode = params[1];
 		String age = params[2];
-		
-		if(pincode == null || pincode.isBlank()) throw new InvalidRegisterRequestException(INVALID_PINCODE_MESSAGE);
-		if(age == null || age.isBlank()) throw new InvalidRegisterRequestException(INVALID_AGE_MESSAGE);
-		
+
+		if (pincode == null || pincode.isBlank())
+			throw new InvalidRegisterRequestException(INVALID_PINCODE_MESSAGE);
+		if (age == null || age.isBlank())
+			throw new InvalidRegisterRequestException(INVALID_AGE_MESSAGE);
+
 		Matcher pincodeMatcher = PINCODE_PATTERN.matcher(pincode.trim());
 		Matcher ageMatcher = AGE_PATTERN.matcher(age.trim());
-		
-		if(!pincodeMatcher.matches()) throw new InvalidRegisterRequestException(INVALID_PINCODE_MESSAGE);
-		if(!ageMatcher.matches()) throw new InvalidRegisterRequestException(INVALID_AGE_MESSAGE);
-		
+
+		if (!pincodeMatcher.matches())
+			throw new InvalidRegisterRequestException(INVALID_PINCODE_MESSAGE);
+		if (!ageMatcher.matches())
+			throw new InvalidRegisterRequestException(INVALID_AGE_MESSAGE);
+
 	}
 
 }

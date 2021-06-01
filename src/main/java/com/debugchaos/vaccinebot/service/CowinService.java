@@ -1,5 +1,8 @@
 package com.debugchaos.vaccinebot.service;
 
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.MIN_18_AGE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.MIN_45_AGE;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -21,7 +25,6 @@ import com.debugchaos.vaccinebot.util.DateTimeUtil;
 import com.debugchaos.vaccinebot.vo.CowinCalendarResponse;
 import com.debugchaos.vaccinebot.vo.PollingRequest;
 import com.debugchaos.vaccinebot.vo.SlotDetails;
-import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.*;
 
 @Component
 public class CowinService {
@@ -83,15 +86,17 @@ public class CowinService {
 
 	}
 
+	@Async
 	public void checkAvailabilityAndSendMessage(Integer pincode, Set<PollingRequest> pollingRequests) {
-		logger.debug("going to poll service: ");
+
+		logger.debug("For Pincode: " + pincode + " going to poll service, Total polling requests: "
+				+ pollingRequests.size());
 
 		// Segregate requests by age (above or below 45)
 		Map<Boolean, List<PollingRequest>> ageWisePollingRequests = pollingRequests.stream()
 				.collect(Collectors.partitioningBy(pollingRequest -> pollingRequest.getAge() >= MIN_45_AGE));
 
-		logger.debug("ageWisePollingRequests Size: " + ageWisePollingRequests.size());
-		logger.debug("ageWisePollingRequests: " + ageWisePollingRequests);
+		logger.debug("For Pincode: " + pincode + " ageWisePollingRequests: " + ageWisePollingRequests);
 
 		// call cowin API
 		CowinCalendarResponse cowinResponse = cowinFindCalendarByPin(pincode);
@@ -105,29 +110,31 @@ public class CowinService {
 		availableSlots.stream().collect(Collectors.groupingBy(SlotDetails::getMin_age_limit))
 				.forEach((minAge, slots) -> {
 					if (minAge == MIN_18_AGE) {
-						logger.debug("min age 18 slots Size: " + slots.size());
+						logger.debug("For Pincode: " + pincode + " min age 18 slots Size: " + slots.size());
 						// logger.debug("min age 18 slots: " + slots);
 						ageWisePollingRequests.get(Boolean.FALSE).forEach(pollingRequest -> {
-							// logger.debug("min age 18 polling request: " + pollingRequest);
+							logger.debug("For Pincode: " + pincode + " min age 18 polling request: " + pollingRequest);
 							slots.forEach(slot -> {
 								if (!pollingRequest.getSlotDetails().contains(slot)) {
 									vaccineBot.sendMessage(pollingRequest.getChatId(), slot.getFormattedMessage());
 									pollingRequest.getSlotDetails().add(slot);
-									logger.debug("min age 18 requet added slot for tracking: " + pollingRequest);
+									logger.debug("For Pincode: " + pincode
+											+ " min age 18 requet added slot for tracking: " + pollingRequest);
 								}
 							});
 
 						});
 					} else {
-						logger.debug("min age 45 slots Size: " + slots.size());
+						logger.debug("For Pincode: " + pincode + "min age 45 slots Size: " + slots.size());
 						// logger.debug("min age 45 slots: " + slots);
 						ageWisePollingRequests.get(Boolean.TRUE).forEach(pollingRequest -> {
-							// logger.debug("min age 45 polling request: " + pollingRequest);
+							logger.debug("For Pincode: " + pincode + " min age 45 polling request: " + pollingRequest);
 							slots.forEach(slot -> {
 								if (!pollingRequest.getSlotDetails().contains(slot)) {
 									vaccineBot.sendMessage(pollingRequest.getChatId(), slot.getFormattedMessage());
 									pollingRequest.getSlotDetails().add(slot);
-									logger.debug("min age 45 requet added slot for tracking: " + pollingRequest);
+									logger.debug("For Pincode: " + pincode
+											+ " min age 45 requet added slot for tracking: " + pollingRequest);
 								}
 							});
 						});

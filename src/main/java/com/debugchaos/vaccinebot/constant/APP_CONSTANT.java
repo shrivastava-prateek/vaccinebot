@@ -71,5 +71,8 @@ public interface APP_CONSTANT {
 	
 	String PROFILE_POSTGRESDB="postgresdb";
 	String PROFILE_ORACLEDB="oracledb";
+	
+	int COWIN_POLL_RATE=5000;
+	int COWIN_INITIAL_DELAY=20000;
 
 }
