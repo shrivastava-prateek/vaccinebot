@@ -1,6 +1,6 @@
 # Vaccine Bot
 
-## Telegram bot with username: @debugchaos_vaccine_bot
+## Telegram bot username: debugchaos_vaccine_bot <a href="https://t.me/debugchaos_vaccine_bot" target="blank"><img src="https://cdn.jsdelivr.net/npm/simple-icons@3.0.1/icons/telegram.svg" alt="debugchaos_vaccine_bot" width="22px" /></a>
 
 ### Description:
 This bot will notify you when there is slot available.
