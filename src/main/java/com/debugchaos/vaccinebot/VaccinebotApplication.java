@@ -1,5 +1,21 @@
 package com.debugchaos.vaccinebot;
 
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.BEAN_DATASOURCE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.BEAN_ENTITYMANAGER_FACTORY;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.BEAN_TRANSACTION;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.BEAN_VACCINEBOT;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.ENTITY_PACKAGE_SCAN;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.HIBERNATE_FORMAT_SQL;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.HIBERNATE_GENERATE_STATISTICS;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.HIBERNATE_HBM2DDL_AUTO;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.HIBERNATE_SHOW_SQL;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.HIBERNATE_USE_SQL_COMMENTS;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.JPA_REPO_PACKAGE;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.PERSISTENCE_UNIT_NAME;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.PROFILE_ORACLEDB;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.PROFILE_POSTGRESDB;
+import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.QUEUE_FACTORY;
+
 import java.sql.SQLException;
 import java.util.Properties;
 
@@ -40,9 +56,6 @@ import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
-import com.debugchaos.vaccinebot.service.MessageReceiverService;
-import static com.debugchaos.vaccinebot.constant.APP_CONSTANT.*;
-
 import oracle.jdbc.OracleConnection;
 import oracle.jdbc.pool.OracleDataSource;
 
@@ -77,11 +90,7 @@ public class VaccinebotApplication {
 
 		ConfigurableApplicationContext applicationContext = SpringApplication.run(VaccinebotApplication.class, args);
 		VaccineBot vaccineBot = (VaccineBot) applicationContext.getBean(BEAN_VACCINEBOT);
-		MessageReceiverService messageReceiver = (MessageReceiverService) applicationContext
-				.getBean(BEAN_MESSAGERECEIVER_SERVICE);
-
 		try {
-			//messageReceiver.initializeRequestsMaps();
 			TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
 			telegramBotsApi.registerBot(vaccineBot);
 		} catch (TelegramApiException e) {
