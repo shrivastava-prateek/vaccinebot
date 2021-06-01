@@ -1,7 +1,7 @@
 # vaccinebot
 
 ## Telegram bot with username: @debugchaos_vaccine_bot
-### Please note: This bot only supports availability for India only.
+### Please note: This bot supports India region only.
 
 ### Description:
 This bot will notify you when there is slot available.
