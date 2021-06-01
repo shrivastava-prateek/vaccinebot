@@ -1,37 +1,17 @@
-## Welcome to GitHub Pages
+# Vaccine Bot
 
-You can use the [editor on GitHub](https://github.com/shrivastava-prateek/vaccinebot/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+## Telegram bot with username: @debugchaos_vaccine_bot
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+### Description:
+This bot will notify you when there is slot available.
+- To get the notification, register by sending message to this bot as: **register [zipcode] \[age]**
+- To unregister use command: **/unregister**
+- To get all the registrations use command: **/registrations**
+- For more details with the command use: **/help**
 
-### Markdown
+<a href="https://github.com/shrivastava-prateek/angularjs-es6-webpack">
+  <img src="https://github-readme-stats.vercel.app/api/pin/?username=shrivastava-prateek&repo=vaccinebot&show_icons=true&layout=compact&theme=gotham" alt="vaccinebot" />
+</a>
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+### Please note: This bot supports India region only.
 
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/shrivastava-prateek/vaccinebot/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
