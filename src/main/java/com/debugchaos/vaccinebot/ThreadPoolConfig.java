@@ -15,9 +15,13 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 
+import lombok.Getter;
+import lombok.Setter;
+
 @Configuration
 @EnableAsync(proxyTargetClass = true)
 @ConfigurationProperties(prefix = "async.thread.pool")
+@Getter @Setter
 public class ThreadPoolConfig implements AsyncConfigurer,SchedulingConfigurer {
 
 	private int coreSize;
@@ -44,30 +48,6 @@ public class ThreadPoolConfig implements AsyncConfigurer,SchedulingConfigurer {
 			Logger logger = LoggerFactory.getLogger(targetClass);
 			logger.error(ex.getMessage(), ex);
 		};
-	}
-
-	public int getCoreSize() {
-		return coreSize;
-	}
-
-	public void setCoreSize(int coreSize) {
-		this.coreSize = coreSize;
-	}
-
-	public int getMaxSize() {
-		return maxSize;
-	}
-
-	public void setMaxSize(int maxSize) {
-		this.maxSize = maxSize;
-	}
-
-	public int getQueueCapacity() {
-		return queueCapacity;
-	}
-
-	public void setQueueCapacity(int queueCapacity) {
-		this.queueCapacity = queueCapacity;
 	}
 
 	@Override

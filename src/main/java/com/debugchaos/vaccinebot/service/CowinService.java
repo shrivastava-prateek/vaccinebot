@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -26,7 +27,11 @@ import com.debugchaos.vaccinebot.vo.CowinCalendarResponse;
 import com.debugchaos.vaccinebot.vo.PollingRequest;
 import com.debugchaos.vaccinebot.vo.SlotDetails;
 
+import lombok.Getter;
+import lombok.Setter;
+
 @Component
+@Getter @Setter
 public class CowinService {
 
 	@Autowired
@@ -39,6 +44,8 @@ public class CowinService {
 	String cowinURI;
 
 	private static final Logger logger = LoggerFactory.getLogger(CowinService.class);
+	
+	private Map<String, SlotDetails> sessionSlotMap = new ConcurrentHashMap<>();
 
 	public CowinCalendarResponse cowinFindCalendarByPin(Integer pinCode) {
 
@@ -73,7 +80,7 @@ public class CowinService {
 								center.getFee_type(), session.getSession_id(), session.getDate(),
 								session.getAvailable_capacity_dose1(), session.getAvailable_capacity_dose2(),
 								session.getAvailable_capacity(), session.getFee(), session.getMin_age_limit(),
-								session.getVaccine());
+								session.getVaccine(), session.getSlots());
 					}).collect(Collectors.toList());
 
 			slotDetails.addAll(slots);
@@ -115,9 +122,10 @@ public class CowinService {
 						ageWisePollingRequests.get(Boolean.FALSE).forEach(pollingRequest -> {
 							logger.debug("For Pincode: " + pincode + " min age 18 polling request: " + pollingRequest);
 							slots.forEach(slot -> {
-								if (!pollingRequest.getSlotDetails().contains(slot)) {
+								if (!pollingRequest.getSlotDetails().contains(slot.getSession_id())) {
 									vaccineBot.sendMessage(pollingRequest.getChatId(), slot.getFormattedMessage());
-									pollingRequest.getSlotDetails().add(slot);
+									pollingRequest.getSlotDetails().add(slot.getSession_id());
+									sessionSlotMap.put(slot.getSession_id(), slot);
 									logger.debug("For Pincode: " + pincode
 											+ " min age 18 requet added slot for tracking: " + pollingRequest);
 								}
@@ -130,9 +138,10 @@ public class CowinService {
 						ageWisePollingRequests.get(Boolean.TRUE).forEach(pollingRequest -> {
 							logger.debug("For Pincode: " + pincode + " min age 45 polling request: " + pollingRequest);
 							slots.forEach(slot -> {
-								if (!pollingRequest.getSlotDetails().contains(slot)) {
+								if (!pollingRequest.getSlotDetails().contains(slot.getSession_id())) {
 									vaccineBot.sendMessage(pollingRequest.getChatId(), slot.getFormattedMessage());
-									pollingRequest.getSlotDetails().add(slot);
+									pollingRequest.getSlotDetails().add(slot.getSession_id());
+									sessionSlotMap.put(slot.getSession_id(), slot);
 									logger.debug("For Pincode: " + pincode
 											+ " min age 45 requet added slot for tracking: " + pollingRequest);
 								}

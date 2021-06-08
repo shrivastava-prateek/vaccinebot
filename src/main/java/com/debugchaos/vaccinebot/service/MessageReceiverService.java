@@ -169,17 +169,25 @@ public class MessageReceiverService {
 		pincodeRequestMap.forEach((pincode, pollingRequests) -> {
 			if (!pollingRequests.isEmpty()) {
 				pollingRequests.forEach(pr -> {
-					List<SlotDetails> oldSlots = pr.getSlotDetails().stream().filter(slot -> {
-						LocalDate slotDate = LocalDate.parse(slot.getDate(), APP_CONSTANT.ddMMyyyyFormatter);
-						if (slotDate.isBefore(currentDate))
-							return true;
+					List<String> oldSlots = pr.getSlotDetails().stream().filter(slot -> {
+						SlotDetails slotDetails = cowinService.getSessionSlotMap().get(slot);
+						if(slotDetails !=null) {
+							LocalDate slotDate = LocalDate.parse(slotDetails.getDate(), APP_CONSTANT.ddMMyyyyFormatter);
+							if (slotDate.isBefore(currentDate))
+								return true;
+							else
+								return false;	
+						}
 						else
-							return false;
+							return true;
+						
 					}).collect(Collectors.toList());
 					pr.getSlotDetails().removeAll(oldSlots);
+					cowinService.getSessionSlotMap().keySet().removeAll(oldSlots);
 					logger.debug("slots to be deleted: " + oldSlots);
 					logger.debug("size after deletion: " + pr.getSlotDetails().size());
 					logger.debug("polling request after deletion: " + pr);
+					logger.debug("session slot map after deletion: " + cowinService.getSessionSlotMap().size());
 				});
 			}
 		});

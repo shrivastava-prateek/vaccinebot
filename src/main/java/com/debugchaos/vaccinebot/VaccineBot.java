@@ -92,12 +92,12 @@ public class VaccineBot extends TelegramLongPollingBot {
 			int pincode = Integer.parseInt(params[1].trim());
 			int age = Integer.parseInt(params[2].trim()) >= MIN_45_AGE ? MIN_45_AGE : MIN_18_AGE;
 
-			PollingRequest pollingRequest = new PollingRequest(userId, userFullName, pincode, age, chatId, null);
+			PollingRequest pollingRequest = new PollingRequest(null, userId, userFullName, pincode, age, chatId, null, null);
 			commandService.registerPollingRequest(pollingRequest);
 
 		} else if (receivedMessage.equalsIgnoreCase(UNREGISTER_COMMAND)) {
 
-			PollingRequest pollingRequest = new PollingRequest(userId, null, 0, 0, chatId, null);
+			PollingRequest pollingRequest = new PollingRequest(null, userId, null, 0, 0, chatId, null, null);
 			commandService.unregisterPollingRequest(pollingRequest);
 
 		} else if (receivedMessage.equalsIgnoreCase(HELP_COMMAND)) {
@@ -111,7 +111,7 @@ public class VaccineBot extends TelegramLongPollingBot {
 
 		} else if (receivedMessage.equalsIgnoreCase(REGISTRATION_DETAILS_COMMAND)) {
 
-			PollingRequest pollingRequest = new PollingRequest(userId, null, 0, 0, chatId, null);
+			PollingRequest pollingRequest = new PollingRequest(null, userId, null, 0, 0, chatId, null, null);
 			commandService.getRegistrationDetails(pollingRequest);
 
 		} else {

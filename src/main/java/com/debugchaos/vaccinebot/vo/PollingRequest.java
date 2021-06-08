@@ -11,7 +11,18 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Transient;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+
 @Entity
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
+@ToString
 public class PollingRequest {
 
 	@Id
@@ -33,92 +44,18 @@ public class PollingRequest {
 	
 	
 	@Transient
-	private Set<SlotDetails> slotDetails;
-
-	public PollingRequest() {
-	}
-
-	public PollingRequest(Long userId, String userName, int pincode, int age, Long chatId,
-			Instant createdDate) {
-		super();
-		this.userId = userId;
-		this.userName = userName;
-		this.pincode = pincode;
-		this.age = age;
-		this.chatId = chatId;
-		this.createdDate = createdDate;
-	}
+	@Getter(AccessLevel.NONE)
+	private Set<String> slotDetails;
 
 
-	public Long getId() {
-		return id;
-	}
-
-	public void setId(Long id) {
-		this.id = id;
-	}
-
-	public Long getUserId() {
-		return userId;
-	}
-
-	public void setUserId(Long userId) {
-		this.userId = userId;
-	}
-
-	public String getUserName() {
-		return userName;
-	}
-
-	public void setUserName(String userName) {
-		this.userName = userName;
-	}
-
-	public int getPincode() {
-		return pincode;
-	}
-
-	public void setPincode(int pincode) {
-		this.pincode = pincode;
-	}
-
-	public int getAge() {
-		return age;
-	}
-
-	public void setAge(int age) {
-		this.age = age;
-	}
-
-	public Long getChatId() {
-		return chatId;
-	}
-
-	public void setChatId(Long chatId) {
-		this.chatId = chatId;
-	}
-
-	public Instant getCreatedDate() {
-		return createdDate;
-	}
-
-	public void setCreatedDate(Instant createdDate) {
-		this.createdDate = createdDate;
-	}
-
-
-
-
-	public Set<SlotDetails> getSlotDetails() {
+	
+	public Set<String> getSlotDetails() {
 		if(slotDetails == null) {
 			slotDetails =  new HashSet<>();
 		}
 		return slotDetails;
 	}
 
-	public void setSlotDetails(Set<SlotDetails> slotDetails) {
-		this.slotDetails = slotDetails;
-	}
 	
 	public String getFormattedMessage() {
 		
@@ -126,12 +63,7 @@ public class PollingRequest {
 				+ ", age criteria: " + age + ", Chat Id: " + chatId +"\n"+ ", Registration Date: " + createdDate+"\n\n";
 	}
 
-	@Override
-	public String toString() {
-		return "PollingRequest [id=" + id + ", userId=" + userId + ", userName=" + userName + ", pincode=" + pincode
-				+ ", age=" + age + ", chatId=" + chatId + ", createdDate=" + createdDate + ", slotDetails="
-				+ slotDetails + "]";
-	}
+	
 
 	@Override
 	public int hashCode() {

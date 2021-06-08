@@ -4,22 +4,17 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+@Getter @Setter
+@NoArgsConstructor
+@ToString
 public class CowinResponse {
 
 	@JsonProperty
 	private List<Session> sessions;
-
-	public List<Session> getSessions() {
-		return sessions;
-	}
-
-	public void setSessions(List<Session> sessions) {
-		this.sessions = sessions;
-	}
-
-	@Override
-	public String toString() {
-		return "Availability=" + sessions;
-	}
-
+	
 }
